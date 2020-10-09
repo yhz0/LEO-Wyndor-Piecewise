@@ -190,16 +190,18 @@ class OptPiecewiseRegression(sklearn.base.BaseEstimator, sklearn.base.RegressorM
     by solving an exact mixed-integer quadratic program.
     """
 
-    def __init__(self, convex, n_pieces, M=1000.0):
+    def __init__(self, convex, n_pieces, M=1000.0, opt=SolverFactory('cplex')):
         """
         :param convex: fit to a convex function if set to True, otherwise concave
         :param n_pieces: number of linear segments
         :param M: big-M constant in integer constraints to represent logical constraints
+        :param opt: optional pyomo solver to use in fitting process, defaults to cplex
         """
         self.convex = convex
         self.M = M
         self.n_pieces = n_pieces
-
+        self.opt = opt
+        
     def build_opt_model(self, X, y):
         """
         Build an pyomo MIQP model that minimizes the MSE for the data.
@@ -349,14 +351,12 @@ class OptPiecewiseRegression(sklearn.base.BaseEstimator, sklearn.base.RegressorM
         self.opt_model_ = self.build_opt_model(X, y)
 
         # Solve the generated model
-        opt = SolverFactory("cplex")
-
         # Set variable values for warmstart if required
         if warmstart_coef is not None:
             self.set_warmstart_values(X, y, warmstart_coef)
-            status = opt.solve(self.opt_model_, warmstart=True)
+            status = self.opt.solve(self.opt_model_, warmstart=True)
         else:
-            status = opt.solve(self.opt_model_)
+            status = self.opt.solve(self.opt_model_)
 
         if verbose:
             print(status)
